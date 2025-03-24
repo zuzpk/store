@@ -1,0 +1,30 @@
+{
+    "name": "@zuzjs/store",
+    "version": "0.1.5",
+    "keywords": [
+        "react",
+        "zuz",
+        "zuz.js",
+        "zuz store"
+    ],
+    "description": "ZuzJS State Manager",
+    "author": "Zuz.js Team <support@zuz.com.pk>",
+    "license": "MIT",
+    "type": "module",
+    "main": "dist/index.js",
+    "exports": {
+        ".": "./dist/index.js"
+    },
+    "files": [
+        "dist"
+    ],
+    "scripts": {
+        "dev": "tsc -d -w -p tsconfig.json"
+    },
+    "engines": {
+        "node": ">=18.17.0"
+    },
+    "dependencies": {
+        "react": "19.0.0-beta-26f2496093-20240514"
+    }
+}
