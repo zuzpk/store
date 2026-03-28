@@ -22,30 +22,29 @@ const useStore = <T,>(
     const lastSelectedRef = useRef<T | undefined>(undefined);
     const hasSelectionRef = useRef(false);
 
-    const selectedState = useSyncExternalStore(
-        (listener) => subscribeStore(key, listener),
-        () => {
-            const state = getStoreState(key);
-            const selected = selector ? selector(state) : (state as T);
+    const readSelectedSnapshot = () => {
+        const state = getStoreState(key);
+        const selected = selector ? selector(state) : (state as T);
 
-            if (!hasSelectionRef.current) {
-                hasSelectionRef.current = true;
-                lastSelectedRef.current = selected;
-                return selected;
-            }
-
-            const prevSelected = lastSelectedRef.current as T;
-            if (equalityFn(prevSelected, selected)) {
-                return prevSelected;
-            }
-
+        if (!hasSelectionRef.current) {
+            hasSelectionRef.current = true;
             lastSelectedRef.current = selected;
             return selected;
-        },
-        () => {
-            const state = getStoreState(key);
-            return selector ? selector(state) : (state as T);
         }
+
+        const prevSelected = lastSelectedRef.current as T;
+        if (equalityFn(prevSelected, selected)) {
+            return prevSelected;
+        }
+
+        lastSelectedRef.current = selected;
+        return selected;
+    };
+
+    const selectedState = useSyncExternalStore(
+        (listener) => subscribeStore(key, listener),
+        readSelectedSnapshot,
+        readSelectedSnapshot
     );
 
     // Memoize dispatcher — createDispatcher is now a plain function (not a hook),
