@@ -1,9 +1,9 @@
 import { defineConfig } from 'tsup';
 
 export default defineConfig({
-  // 1. Entry points: index for the lib, bin for the CLI
+  // Entry point for the library build.
   entry: {
-    index: 'src/index.ts'
+    index: 'src/index.tsx'
   },
   format: ['cjs', 'esm'],
   dts: true,

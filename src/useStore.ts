@@ -1,11 +1,14 @@
-import { useContext, useMemo } from "react";
+import { useMemo, useRef, useSyncExternalStore } from "react";
 import createDispatcher from "./dispatch";
-import { contextRegistry } from "./registry";
+import { contextRegistry, getStoreState, subscribeStore } from "./registry";
 import { Store } from "./types";
+
+const strictEqual = <T,>(a: T, b: T) => Object.is(a, b);
 
 const useStore = <T,>(
     key: string, 
-    selector?: (state: any) => T
+    selector?: (state: any) => T,
+    equalityFn: (a: T, b: T) => boolean = strictEqual
 ) : Store<T> => {
 
     const contextEntry = contextRegistry[key];
@@ -16,19 +19,40 @@ const useStore = <T,>(
         ].join(` `));
     }
 
-    const { context } = contextEntry
+    const lastSelectedRef = useRef<T | undefined>(undefined);
+    const hasSelectionRef = useRef(false);
 
-    const value = useContext(context)
+    const selectedState = useSyncExternalStore(
+        (listener) => subscribeStore(key, listener),
+        () => {
+            const state = getStoreState(key);
+            const selected = selector ? selector(state) : (state as T);
 
-    if (!value) throw new Error("Context not provided.");
+            if (!hasSelectionRef.current) {
+                hasSelectionRef.current = true;
+                lastSelectedRef.current = selected;
+                return selected;
+            }
 
-    const selectedState = selector ? selector(value) : value;
+            const prevSelected = lastSelectedRef.current as T;
+            if (equalityFn(prevSelected, selected)) {
+                return prevSelected;
+            }
+
+            lastSelectedRef.current = selected;
+            return selected;
+        },
+        () => {
+            const state = getStoreState(key);
+            return selector ? selector(state) : (state as T);
+        }
+    );
 
     // Memoize dispatcher — createDispatcher is now a plain function (not a hook),
-    // so this is safe. value.dispatch is stable (useCallback + stable _dispatch).
+    // so this is safe.
     const dispatch = useMemo(
-        () => createDispatcher(key, value.dispatch),
-        [key, value.dispatch]
+        () => createDispatcher(key),
+        [key]
     );
 
     return {

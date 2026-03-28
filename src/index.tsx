@@ -2,12 +2,22 @@ import {
     createContext
 } from "react";
 import createProvider from "./provider";
-import { contextCache, contextRegistry } from "./registry";
+import type { SchedulerMode } from "./registry";
+import { batchUpdates, contextCache, contextRegistry, ensureStore, setSchedulerMode } from "./registry";
 import { dynamic } from "./types";
 
-const createStore = <T extends dynamic>(key: string, initialState: T) => {
+const createStore = <T extends dynamic>(
+    key: string,
+    initialState: T,
+    mode?: SchedulerMode,
+) => {
+
+    const resolvedMode: SchedulerMode = mode ?? "microtask";
 
     if (contextRegistry[key]) {
+        if (mode) {
+            setSchedulerMode(key, mode);
+        }
         return contextRegistry[key];
     }
 
@@ -22,6 +32,8 @@ const createStore = <T extends dynamic>(key: string, initialState: T) => {
     }
 
     contextCache.set(key, initialState)
+    ensureStore(key, initialState)
+    setSchedulerMode(key, resolvedMode)
 
     return contextRegistry[key]
 
@@ -29,4 +41,10 @@ const createStore = <T extends dynamic>(key: string, initialState: T) => {
 
 export default createStore
 
+export type { SchedulerMode } from "./registry";
 export { default as useStore } from "./useStore";
+
+export const batch = batchUpdates;
+export const setStoreScheduleMode = (key: string, mode: SchedulerMode) => {
+    setSchedulerMode(key, mode);
+};

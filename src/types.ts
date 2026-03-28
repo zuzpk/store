@@ -1,5 +1,6 @@
 import { Context as C, Dispatch, FC, ReactNode } from "react"
 import createDispatcher from "./dispatch"
+import type { SchedulerMode } from "./registry"
 
 export type dynamic = { 
     [x: string] : any 
@@ -27,4 +28,9 @@ export type ContextRegistry = {
 
 export type Store<T> = T & {
     dispatch: ReturnType<typeof createDispatcher>
+}
+
+export type StorePerformanceAPI = {
+    batch: <T>(callback: () => T) => T;
+    setScheduleMode: (key: string, mode: SchedulerMode) => void;
 }
