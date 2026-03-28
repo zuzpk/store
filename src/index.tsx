@@ -3,15 +3,15 @@ import {
 } from "react";
 import createProvider from "./provider";
 import { contextCache, contextRegistry } from "./registry";
-import { dynamicObject } from "./types";
+import { dynamic } from "./types";
 
-const createStore = <T extends dynamicObject>(key: string, initialState: T) => {
+const createStore = <T extends dynamic>(key: string, initialState: T) => {
 
     if (contextRegistry[key]) {
         return contextRegistry[key];
     }
 
-    const InContext = createContext<{ state: T; dispatch: (args: dynamicObject) => void}>({
+    const InContext = createContext<{ state: T; dispatch: (args: dynamic) => void}>({
         state:  initialState,
         dispatch: () => {}
     })
@@ -21,7 +21,7 @@ const createStore = <T extends dynamicObject>(key: string, initialState: T) => {
         Provider: createProvider(InContext, initialState),
     }
 
-    contextCache[key] = initialState
+    contextCache.set(key, initialState)
 
     return contextRegistry[key]
 

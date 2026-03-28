@@ -1,8 +1,13 @@
 import { Context as C, Dispatch, FC, ReactNode } from "react"
 import createDispatcher from "./dispatch"
 
-export type dynamicObject = { 
+export type dynamic = { 
     [x: string] : any 
+}
+
+export type DispatchQueueItem = {
+    payload: dynamic;
+    resolve: () => void;
 }
 
 export type stringObject = { 

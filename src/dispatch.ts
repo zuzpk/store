@@ -1,77 +1,58 @@
-import { Context, useContext } from "react";
-import { contextCache } from "./registry";
-import { dynamicObject } from "./types";
+import { actionQueue, contextCache } from "./registry";
+import { DispatchQueueItem, dynamic } from "./types";
 
-interface Props {
-    key: string,
-    context: Context<any>
-}
+// Per-key flag — prevents cross-store blocking and allows
+// independent flush scheduling per store instance.
+const isProcessing: Record<string, boolean> = {};
 
-let queue : dynamicObject[] = [];
-let isProcessing = false;
-
-const processQueue = async (key: string, dispatch: any) => {
-    if (isProcessing) return;
-
-    isProcessing = true;
-
-    while (queue.length > 0) {
-        const action = queue.shift();
-        await dispatch(action);
-        contextCache[key] = action
+const flushQueue = (key: string, dispatch: (payload: dynamic) => void) => {
+    const queue = actionQueue[key];
+    if (!queue || queue.length === 0) {
+        isProcessing[key] = false;
+        return;
     }
 
-    isProcessing = false;
+    // Drain the entire queue and merge all deltas into a single
+    // state object. This collapses N burst dispatches into 1 re-render.
+    const base = contextCache.get(key) || {};
+    const batch = queue.splice(0);
+    const merged: dynamic = Object.assign({}, base, ...batch.map(item => item.payload));
+
+    // Skip dispatch entirely if no key actually changed value.
+    const changed = Object.keys(merged).some(k => base[k] !== merged[k]);
+    if (changed) {
+        contextCache.set(key, merged);
+        dispatch(merged);
+    }
+
+    // Resolve all callers that contributed to this flush.
+    batch.forEach(item => item.resolve());
+
+    isProcessing[key] = false;
 };
 
-const _prepareState = (prevState: { [x: string]: any; }, nextState: { [x: string]: any; }) => {
-    const nextKeys = Object.keys(nextState)
-    nextKeys.map(k => {
-        if(prevState[k] !== nextState[k]){
-            prevState[k] = nextState[k]
-        }
-    });
-    return {
-        ...prevState,
-        ...nextState
-    }
-}
+// Plain function — no longer a hook. Caller (useStore) is responsible
+// for providing the stable dispatch reference from context.
+const createDispatcher = (key: string, dispatch: (payload: dynamic) => void) => {
+    return (payload: dynamic = {}) => {
+        let queueItem: DispatchQueueItem;
+        const done = new Promise<void>(resolve => {
+            queueItem = { payload, resolve };
+        });
 
-const prepareState = (prevState: dynamicObject, nextState: dynamicObject) => {
+        if (!actionQueue[key]) actionQueue[key] = [];
+        actionQueue[key].push(queueItem!);
 
-    // let changed = false;
-    const newState = { ...prevState, ...nextState };
+        // If a flush is already scheduled for this key, just accumulate.
+        if (isProcessing[key]) return done;
+        isProcessing[key] = true;
 
-    const changed = Object.keys(nextState).some(
-        (key) => prevState[key] !== nextState[key]
-    );
+        // Defer flush so synchronous burst updates all land in the queue
+        // before we merge and dispatch once.
+        queueMicrotask(() => flushQueue(key, dispatch));
 
-    // Object.keys(nextState).forEach((k) => {
-    //     if (prevState[k] !== nextState[k]) {
-    //         newState[k] = nextState[k];
-    //         changed = true;
-    //     }
-    // });
-
-    return changed ? newState : prevState;
+        return done;
+    };
 };
 
-const createDispatcher = (props: Props) => {
-
-    const { key, context } = props;
-
-    const state : dynamicObject = useContext(context)
-    const dispatch = state['dispatch'];
-
-   
-
-    return async (payload = {}) => {
-        queue.push({ ...prepareState( contextCache[key], payload) })
-        processQueue(key, dispatch)
-    }
-    // return async (payload = {}) => dispatch({ ...prepareState(state, payload) });
-    
-
-}
-
-export default createDispatcher
+export default createDispatcher;

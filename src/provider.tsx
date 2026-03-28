@@ -1,16 +1,19 @@
 import { Context, ReactNode, useCallback, useEffect, useMemo, useReducer, useRef } from "react";
-import { dynamicObject } from "./types";
+import { dynamic } from "./types";
 
 interface Props {
     children: ReactNode,
 }
 
-const rootReducer = (state: any, action: { payload: any; } ) => ({
-    ...state,
-    ...action.payload
-})
+// Bail out if no key actually changed — React will skip re-render when the
+// same state reference is returned from the reducer.
+const rootReducer = (state: any, action: { payload: any }) => {
+    const next = action.payload;
+    const changed = Object.keys(next).some(k => state[k] !== next[k]);
+    return changed ? { ...state, ...next } : state;
+};
 
-const createProvider = <T extends dynamicObject>(InContext: Context<{ state: T; dispatch: (args: dynamicObject) => void}>, initialState: T) => {
+const createProvider = <T extends dynamic>(InContext: Context<{ state: T; dispatch: (args: dynamic) => void}>, initialState: T) => {
     
     const Provider = (props: Props) => {
 
@@ -25,15 +28,12 @@ const createProvider = <T extends dynamicObject>(InContext: Context<{ state: T; 
 
         const { children } = props
 
-        const rootState = useMemo(() => ({ 
-            ...initialState
-        }), [initialState])
-
-        const [state, _dispatch] = useReducer(rootReducer, rootState);
+        // initialState is a stable reference captured in closure — no useMemo needed.
+        const [state, _dispatch] = useReducer(rootReducer, initialState);
 
         const dispatch = useCallback(
-            (args: dynamicObject) => {
-                if (isMounted) {
+            (args: dynamic) => {
+                if (isMounted.current) {  // FIX: was `isMounted` (ref object → always truthy)
                     _dispatch({ payload: { ...args } });
                 }
             }, 
@@ -45,7 +45,7 @@ const createProvider = <T extends dynamicObject>(InContext: Context<{ state: T; 
                 ...state,
                 dispatch
             }),
-            [state]
+            [state, dispatch]  // FIX: dispatch was missing from deps
         )
 
         return <InContext.Provider value={providedValue}>{children}</InContext.Provider>

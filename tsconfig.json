@@ -13,7 +13,9 @@
       "skipLibCheck": true,
       "module": "ESNext",
       "moduleResolution": "Node",
-      "removeComments": true
+      "removeComments": true,
+      "ignoreDeprecations": "6.0",
+      "rootDir": "."
     },
     "include": ["src/**/*.ts", "src/**/*.tsx"],
     "exclude": ["node_modules"]

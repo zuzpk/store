@@ -1,6 +1,6 @@
 {
     "name": "@zuzjs/store",
-    "version": "0.1.5",
+    "version": "0.1.6",
     "keywords": [
         "react",
         "zuz",
@@ -11,20 +11,35 @@
     "author": "Zuz.js Team <support@zuz.com.pk>",
     "license": "MIT",
     "type": "module",
-    "main": "dist/index.js",
+    "main": "./dist/index.cjs",
+    "module": "./dist/index.js",
+    "types": "./dist/index.d.ts",
     "exports": {
-        ".": "./dist/index.js"
+        ".": {
+        "types": "./dist/index.d.ts",
+        "import": "./dist/index.js",
+        "require": "./dist/index.cjs"
+        }
     },
     "files": [
         "dist"
     ],
     "scripts": {
-        "dev": "tsc -d -w -p tsconfig.json"
+        "dev:js": "tsup --watch",
+        "dev": "npm-run-all -p dev:*",
+        "build": "rm -rf dist && tsup",
+        "publish": "npm run build && node publish-pre.js && npm publish && node publish-post.js"
     },
     "engines": {
         "node": ">=18.17.0"
     },
     "dependencies": {
-        "react": "19.0.0-beta-26f2496093-20240514"
+        "react": "19.2.3"
+    },
+    "devDependencies": {
+        "@types/node": "^25.3.0",
+        "husky": "^9.1.7",
+        "tsup": "^8.5.1",
+        "typescript": "^6.0.2"
     }
 }

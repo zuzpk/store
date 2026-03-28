@@ -1,4 +1,4 @@
-import { useContext } from "react";
+import { useContext, useMemo } from "react";
 import createDispatcher from "./dispatch";
 import { contextRegistry } from "./registry";
 import { Store } from "./types";
@@ -24,9 +24,16 @@ const useStore = <T,>(
 
     const selectedState = selector ? selector(value) : value;
 
+    // Memoize dispatcher — createDispatcher is now a plain function (not a hook),
+    // so this is safe. value.dispatch is stable (useCallback + stable _dispatch).
+    const dispatch = useMemo(
+        () => createDispatcher(key, value.dispatch),
+        [key, value.dispatch]
+    );
+
     return {
         ...selectedState,
-        dispatch: createDispatcher({ key, context })
+        dispatch,
     }
 
 }
